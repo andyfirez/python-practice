@@ -23,10 +23,12 @@ jobs:
           TESTS_TO_RUN=()
           
           # Ищем изменения в любых подпапках src/
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          changed_files="${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "Changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          for file in ${changed_files}; do
             if [[ $file == src/*/task_*/*.py ]]; then
-              category=$(echo $file | cut -d'/' -f2)
-              task_num=$(echo $file | grep -oP 'task_\K\d+')
+              category=$(echo "$file" | cut -d'/' -f2)
+              task_num=$(echo "$file" | grep -oP 'task_\K\d+')
               test_file="tests/${category}/test_task_${task_num}.py"
               
               if [ -f "$test_file" ]; then
@@ -40,8 +42,9 @@ jobs:
             TESTS_TO_RUN=("tests/")
           fi
 
-          echo "test_files=${TESTS_TO_RUN[*]}" >> $GITHUB_OUTPUT
-          echo "Will run tests for: ${TESTS_TO_RUN[*]}"
+          # Правильное формирование вывода для GitHub Actions
+          echo "test_files=${TESTS_TO_RUN[@]}" >> $GITHUB_OUTPUT
+          echo "Will run tests for: ${TESTS_TO_RUN[@]}"
 
       - name: Run tests
         run: pytest -v ${{ steps.test-filter.outputs.test_files }}
