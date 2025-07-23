@@ -6,20 +6,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      # Устанавливаем Python и зависимости
+        with:
+          fetch-depth: 2
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"  # или конкретная версия, например "3.10"
-      
-      # Устанавливаем pytest и другие зависимости (если есть requirements.txt)
+          python-version: "3.x"
+
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-      
-      # Секретно загружаем тесты
+        run: pip install pytest
+
       - name: Download hidden tests
         env:
           TOKEN: ${{ secrets.TESTS_ACCESS_TOKEN }}
@@ -28,16 +25,41 @@ jobs:
             echo "::error::PAT token is not configured!"
             exit 1
           fi
-          git clone https://$TOKEN@github.com/${{ github.repository_owner }}/python-practice-tests.git
-          # Копируем только тесты, без исходной структуры репозитория
-          cp -r python-practice-tests/tests/ .
-          rm -rf python-practice-tests  # Удаляем клон, чтобы не мешал
-      
-      # Запускаем тесты
-      - name: Run tests
+          git clone --depth 1 --filter=blob:none --sparse https://$TOKEN@github.com/${{ github.repository_owner }}/python-practice-tests.git
+          cd python-practice-tests
+          git sparse-checkout set tests
+          cd ..
+          mv python-practice-tests/tests .
+          rm -rf python-practice-tests
+
+      - name: Determine tests to run
+        id: test-filter
         run: |
-          pytest -v
-      
-      # Очищаем следы
+          TESTS_TO_RUN=()
+          
+          # Ищем изменения в любых подпапках src/
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [[ $file == src/*/task_*/*.py ]]; then
+              category=$(echo $file | cut -d'/' -f2)
+              task_num=$(echo $file | grep -oP 'task_\K\d+')
+              test_file="tests/${category}/test_task_${task_num}.py"
+              
+              if [ -f "$test_file" ]; then
+                TESTS_TO_RUN+=("$test_file")
+              fi
+            fi
+          done
+
+          if [ ${#TESTS_TO_RUN[@]} -eq 0 ]; then
+            echo "::notice::No specific tasks changed, running all tests"
+            TESTS_TO_RUN=("tests/")
+          fi
+
+          echo "test_files=${TESTS_TO_RUN[*]}" >> $GITHUB_OUTPUT
+          echo "Will run tests for: ${TESTS_TO_RUN[*]}"
+
+      - name: Run tests
+        run: pytest -v ${{ steps.test-filter.outputs.test_files }}
+
       - name: Cleanup
-        run: rm -rf python-practice-tests tests
+        run: rm -rf tests
