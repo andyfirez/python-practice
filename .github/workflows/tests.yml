@@ -27,30 +27,25 @@ jobs:
         run: |
           TESTS_TO_RUN=()
           
-          # Получаем изменённые файлы как массив
-          changed_files_str="${{ steps.changed-files.outputs.all_changed_files }}"
-          echo "Raw changed files: '$changed_files_str'"
-          
-          # Преобразуем строку в массив (учитываем пробелы и переносы)
-          IFS=$' \t\n' read -r -a changed_files <<< "$changed_files_str"
+          # Получаем изменённые файлы как массив (с очисткой)
+          changed_files_str=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr -d '\r\n')
+          IFS=' ' read -r -a changed_files <<< "$changed_files_str"
           
           for file in "${changed_files[@]}"; do
             echo "Processing file: '$file'"
             
-            # Проверяем формат пути (удаляем возможные лишние символы)
-            file_clean=$(echo "$file" | tr -d '\r\n')
-            
-            if [[ "$file_clean" == src/*/task_*/*.py ]]; then
-              echo "Matched file pattern: $file_clean"
+            if [[ "$file" == src/*/task_*/*.py ]]; then
+              # Очищаем путь и извлекаем данные
+              file_clean=$(echo "$file" | xargs)  # Удаляем все пробелы/переносы
               category=$(echo "$file_clean" | cut -d'/' -f2)
-              task_num=$(echo "$file_clean" | grep -o 'task_[0-9]\+' | cut -d'_' -f2)
+              task_num=$(echo "$file_clean" | grep -o 'task_[0-9]\+' | cut -d'_' -f2 | tr -d '[:space:]')
               test_file="tests/${category}/test_task_${task_num}.py"
               
+              echo "Checking test file: $test_file"
               if [ -f "$test_file" ]; then
-                echo "Found test file: $test_file"
                 TESTS_TO_RUN+=("$test_file")
               else
-                echo "Test file not found: $test_file"
+                echo "::error::Test file not found: $test_file"
               fi
             fi
           done
