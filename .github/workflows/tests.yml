@@ -1,0 +1,25 @@
+name: Check Solution
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Секретно загружаем тесты
+      - name: Download hidden tests
+        env:
+          TOKEN: ${{ secrets.TESTS_ACCESS_TOKEN }}
+        run: |
+          git clone https://$TOKEN@github.com/${{ github.repository_owner }}/python-practice-tests.git
+          cp -r python-practice-tests/tests/ .
+      
+      # Запускаем тесты
+      - name: Run tests
+        run: |
+          pytest -v
+      
+      # Очищаем следы
+      - name: Cleanup
+        run: rm -rf python-practice-tests tests
