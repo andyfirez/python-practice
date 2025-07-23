@@ -6,20 +6,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify secret
-        run: |
-          if [ -z "${{ secrets.TESTS_ACCESS_TOKEN }}" ]; then
-            echo "ERROR: Token is not set!"
-            exit 1
-          else
-            echo "Token is available (first 3 chars: ${ secrets.TESTS_ACCESS_TOKEN:0:3}...)"
-          fi
       
       # Секретно загружаем тесты
       - name: Download hidden tests
         env:
           TOKEN: ${{ secrets.TESTS_ACCESS_TOKEN }}
         run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::PAT token is not configured!"
+            exit 1
+          fi
           git clone https://$TOKEN@github.com/${{ github.repository_owner }}/python-practice-tests.git
           cp -r python-practice-tests/tests/ .
       
