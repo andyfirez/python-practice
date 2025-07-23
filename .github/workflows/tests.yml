@@ -5,7 +5,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@
+      
+      # Устанавливаем Python и зависимости
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"  # или конкретная версия, например "3.10"
+      
+      # Устанавливаем pytest и другие зависимости (если есть requirements.txt)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
       
       # Секретно загружаем тесты
       - name: Download hidden tests
