@@ -29,8 +29,9 @@ jobs:
             exit 1
           fi
           git clone https://$TOKEN@github.com/${{ github.repository_owner }}/python-practice-tests.git
-          # Копируем содержимое tests/, а не саму папку
-          cp -r python-practice-tests/tests/. .
+          # Копируем только тесты, без исходной структуры репозитория
+          cp -r python-practice-tests/tests/ .
+          rm -rf python-practice-tests  # Удаляем клон, чтобы не мешал
       
       # Запускаем тесты
       - name: Run tests
